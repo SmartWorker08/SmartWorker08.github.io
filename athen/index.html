@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E5A8A">
+<title>Athen-Lernpfad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --ground:#EFF0EA; --surface:#FFFFFF; --ink:#1B2230; --muted:#5B6371; --line:#D8DAD1;
+  --accent:#1E5A8A; --accent-soft:#DCE7F1; --on-accent:#FFFFFF;
+  --gold:#B07A17; --ok:#2C7646; --ok-soft:#DCEEE2; --bad:#AE3A2F; --bad-soft:#F6DFDB;
+  --lock:#B4B8AF;
+  --display:"Marcellus","Trajan Pro",Georgia,serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#12161D; --surface:#1B212B; --ink:#E9E7E1; --muted:#9BA2AE; --line:#2D3542;
+    --accent:#7DB2DE; --accent-soft:#1E3247; --on-accent:#0E141B;
+    --gold:#E3B254; --ok:#6CC28C; --ok-soft:#1B3225; --bad:#EE8479; --bad-soft:#3A2121; --lock:#4A515C;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#12161D; --surface:#1B212B; --ink:#E9E7E1; --muted:#9BA2AE; --line:#2D3542;
+  --accent:#7DB2DE; --accent-soft:#1E3247; --on-accent:#0E141B;
+  --gold:#E3B254; --ok:#6CC28C; --ok-soft:#1B3225; --bad:#EE8479; --bad-soft:#3A2121; --lock:#4A515C;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-inline:16px;padding-block:24px 48px}
+#app{max-width:620px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);font-weight:400;text-wrap:balance;margin:0;line-height:1.15}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.85em}
+.eyebrow{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+
+/* header */
+.top{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.top h1{font-size:2.4rem}
+.inscr{font-family:var(--display);letter-spacing:.32em;color:var(--accent);font-size:.8rem;opacity:.8}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.85rem;font-weight:600}
+.chip .star{color:var(--gold)}
+
+/* map */
+.path{display:flex;flex-direction:column;position:relative}
+.path::before{content:"";position:absolute;left:23px;top:24px;bottom:24px;width:2px;background:var(--line)}
+.node{display:flex;align-items:center;gap:16px;padding:10px 12px 10px 0;background:none;border:0;text-align:left;border-radius:12px;position:relative}
+.node:hover:not(:disabled) .node-body{border-color:var(--accent)}
+.node:disabled{cursor:not-allowed}
+.dot{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:1.25rem;background:var(--surface);border:2px solid var(--accent);color:var(--accent);z-index:1}
+.node.done .dot{background:var(--accent);color:var(--on-accent)}
+.node:disabled .dot{border-color:var(--lock);color:var(--lock)}
+.node.final .dot{border-radius:10px}
+.node-body{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;transition:border-color .15s}
+.node:disabled .node-body{opacity:.55}
+.node-title{font-weight:700;font-size:1.02rem}
+.node-sub{font-size:.85rem;color:var(--muted)}
+.stars{color:var(--gold);letter-spacing:2px;white-space:nowrap;font-size:1.05rem}
+.stars .off{color:var(--line)}
+.reset{margin-top:28px;background:none;border:0;color:var(--muted);font-size:.85rem;text-decoration:underline;padding:4px 0}
+.reset.warn{color:var(--bad);font-weight:600}
+
+/* generic */
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.back{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:.9rem;font-weight:600}
+.progress{flex:1;height:10px;background:var(--line);border-radius:999px;overflow:hidden}
+.progress>i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .3s}
+.btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:12px;padding:14px 22px;font-weight:700;background:var(--accent);color:var(--on-accent);font-size:1rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.wide{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .btn{flex:1 1 180px}
+
+/* learn */
+.lhead{margin-bottom:18px;display:flex;flex-direction:column;gap:6px}
+.lhead h2{font-size:1.9rem}
+.cards{display:flex;flex-direction:column;gap:14px;margin-bottom:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.card h3{font-family:var(--body);font-weight:700;font-size:1.05rem;margin-bottom:6px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.card h3 .mono{color:var(--accent)}
+.card p{margin:0}
+.card ul{margin:6px 0 0;padding-left:20px}
+.card li{margin:3px 0}
+.merke{margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);font-size:.93rem}
+.merke b:first-child{color:var(--accent)}
+
+/* quiz */
+.streak{font-size:.85rem;font-weight:700;color:var(--gold);white-space:nowrap;min-width:64px;text-align:right}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.qtype{margin-bottom:8px}
+.qtext{font-size:1.2rem;font-weight:600;line-height:1.4;margin:0 0 18px;text-wrap:pretty}
+.retry-tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--bad);background:var(--bad-soft);padding:2px 8px;border-radius:6px;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opts.tf{flex-direction:row}
+.opts.tf .opt{flex:1;justify-content:center}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--ground);border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:1rem;line-height:1.4;transition:border-color .12s,background .12s}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt .k{flex:none;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:.75rem;font-weight:700;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.opts.tf .k{display:none}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt:disabled{cursor:default}
+.fb{margin-top:16px;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.fb.ok{background:var(--ok-soft)}
+.fb.no{background:var(--bad-soft)}
+.fb strong{font-size:1.05rem}
+.fb.ok strong{color:var(--ok)}
+.fb.no strong{color:var(--bad)}
+.fb p{margin:0}
+.hint{font-size:.8rem;color:var(--muted);margin-top:10px;text-align:center}
+
+/* order */
+.slots{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.slot{display:flex;gap:10px;align-items:center;min-height:46px;border:2px dashed var(--line);border-radius:10px;padding:8px 12px}
+.slot .n{font-family:var(--mono);color:var(--muted);width:20px;flex:none}
+.slot button{flex:1;text-align:left;background:none;border:0;padding:0;font-weight:600}
+.slot.filled{border-style:solid;background:var(--ground)}
+.slot.right{border-color:var(--ok);background:var(--ok-soft)}
+.slot.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.slot .yr{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.pool{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pool button{background:var(--accent-soft);border:1px solid transparent;border-radius:999px;padding:8px 14px;font-weight:600;font-size:.95rem}
+.pool button:hover{border-color:var(--accent)}
+
+/* result */
+.result{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding-top:10px}
+.bigstars{font-size:3rem;letter-spacing:8px;color:var(--gold);line-height:1}
+.bigstars .off{color:var(--line)}
+.bigstars span{display:inline-block;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+.bigstars span:nth-child(2){animation-delay:.15s}.bigstars span:nth-child(3){animation-delay:.3s}
+@keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
+.result h2{font-size:2rem}
+.score{font-size:1.1rem}
+.review{width:100%;text-align:left;margin-top:8px}
+.review h3{font-family:var(--body);font-weight:700;font-size:1rem;margin-bottom:8px}
+.review .card{margin-bottom:8px;padding:12px 14px;font-size:.93rem}
+.review .card b{display:block;margin-bottom:2px}
+/* code */
+.codebox{margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.codebox summary{cursor:pointer;font-weight:600;font-size:.95rem}
+.codebox:not([open]){gap:0}
+.codebox p{margin:0;font-size:.92rem}
+.codebox label{font-size:.85rem;margin-top:6px}
+.coderow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.coderow code,.codeline code{font-family:var(--mono);font-size:1.05rem;letter-spacing:.06em;background:var(--accent-soft);color:var(--ink);padding:6px 10px;border-radius:8px;user-select:all}
+.coderow input{flex:1;min-width:0;font:inherit;font-family:var(--mono);text-transform:uppercase;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--ground);color:var(--ink)}
+.btn.small{padding:9px 14px;font-size:.9rem}
+.codemsg{min-height:1.2em;font-size:.9rem}
+.codemsg.bad{color:var(--bad)} .codemsg.good{color:var(--ok)}
+.codeline{margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:.9rem}
+/* sync */
+.sync.ok{color:var(--ok)}
+.sync.off{color:var(--muted)}
+.chip.sync{font-weight:500}
+.eyebrow .sync{text-transform:none;letter-spacing:0;font-weight:500}
+/* game */
+.mini{flex:1;display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.mini span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:700;border:2px solid var(--accent);color:var(--accent);background:var(--surface)}
+.mini span.sq{border-radius:6px}
+.mini span.done{background:var(--accent);color:var(--on-accent)}
+.mini span.locked{border-color:var(--lock);color:var(--lock)}
+.mini span.cur{outline:3px solid var(--gold);outline-offset:1px}
+.result .mini{justify-content:center;flex:none}
+.hearts{display:flex;gap:2px;font-size:1.35rem;color:var(--bad);line-height:1}
+.hearts .lost{color:var(--line);animation:lose .5s ease}
+@keyframes lose{0%{transform:scale(1.5);color:var(--bad)}100%{transform:scale(1)}}
+.qmeta{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.combo{font-size:.8rem;font-weight:700;color:var(--gold);white-space:nowrap}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:6px;margin-bottom:8px}
+.tag.bad{color:var(--bad);background:var(--bad-soft)}
+.tag.rev{color:var(--accent);background:var(--accent-soft)}
+.shake{animation:shake .4s ease}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.card.boss{border:2px solid var(--gold)}
+.bigheart{font-size:3.5rem;color:var(--line);line-height:1}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:420px){.top h1{font-size:2rem}.opts.tf{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const LEVELS = [
+{ id:1, title:"Grundlagen Griechenland", years:"1200–500 v. Chr.",
+  learn:[
+    {h:"Das Dunkle Zeitalter", y:"ca. 1200–800", t:"Die Zeit vor dem Archaischen Zeitalter. Man weiß wenig darüber, deshalb heißt es „dunkel“."},
+    {h:"Das Archaische Zeitalter", y:"ca. 800–500", t:"In dieser Zeit entstehen die <b>Poleis</b> (Einzahl: Polis). Alles, was du für die Arbeit lernst, passiert am Ende dieses Zeitalters."},
+    {h:"Die Polis", t:"Eine Polis ist ein <b>Stadtstaat</b> mit eigener Gesetzgebung. Es gab viele davon, zum Beispiel Athen und Sparta. Anfangs herrscht der <b>Adel</b>.", m:"Herrschaft des Adels = <b>Aristokratie</b>."},
+    {h:"Hellenen", t:"<b>Hellenen = Griechen.</b> Obwohl sie in vielen verschiedenen Poleis lebten, fühlten sie sich durch gemeinsame Regeln, Sprache und Götter als <b>ein Volk</b>."}
+  ],
+  q:[
+    {t:"mc", q:"Wann war das Dunkle Zeitalter?", a:["ca. 1200–800 v. Chr.","ca. 800–500 v. Chr.","ca. 500–300 v. Chr.","ca. 1500–1200 v. Chr."], ex:"Dunkles Zeitalter 1200–800, danach Archaisches Zeitalter 800–500."},
+    {t:"mc", q:"Wann war das Archaische Zeitalter?", a:["ca. 800–500 v. Chr.","ca. 1200–800 v. Chr.","ca. 600–400 v. Chr.","ca. 900–700 v. Chr."], ex:"Archaisches Zeitalter: 800–500 v. Chr."},
+    {t:"mc", q:"Was ist eine Polis?", a:["Ein Stadtstaat mit eigener Gesetzgebung","Ein Tempel für Zeus","Der Marktplatz von Athen","Die Versammlung aller Griechen"], ex:"Polis = Stadtstaat mit eigener Gesetzgebung. Der Marktplatz heißt Agora."},
+    {t:"mc", q:"Wie nennt man die Herrschaft des Adels?", a:["Aristokratie","Demokratie","Tyrannis","Monarchie"], ex:"Aristokratie = Herrschaft des Adels (wörtlich: der „Besten“)."},
+    {t:"tf", q:"„Hellenen“ ist ein anderes Wort für Griechen.", a:true, ex:"Richtig: Hellenen = Griechen."},
+    {t:"tf", q:"Alle Griechen lebten in einem einzigen Staat mit einer gemeinsamen Regierung.", a:false, ex:"Falsch: Es gab viele Poleis mit eigener Gesetzgebung. Trotzdem sahen sie sich als ein Volk."}
+  ]},
+{ id:2, title:"Die Krise Athens", years:"7. / frühes 6. Jh. v. Chr.",
+  learn:[
+    {h:"Ursache: Bevölkerungswachstum", t:"Immer mehr Menschen brauchen Land. Das Ackerland ist aber <b>begrenzt</b>, und große Teile gehören <b>wohlhabenden Adligen</b>."},
+    {h:"Verschuldung & Schuldknechtschaft", t:"Kleinbauern müssen sich bei reichen Grundbesitzern verschulden. Wer nicht zurückzahlen kann, gerät in <b>Schuldknechtschaft</b>: Er verliert seine Freiheit und muss für seinen Gläubiger arbeiten."},
+    {h:"Neue Reiche ohne Macht", t:"Durch Handel werden <b>Kaufleute und Handwerker</b> wohlhabender. Politisch haben sie aber kaum Einfluss, denn die Macht liegt beim Adel."},
+    {h:"Folge", t:"Wachsende <b>Spannungen</b> zwischen Bauern, Kaufleuten und Handwerkern auf der einen und dem Adel auf der anderen Seite.", m:"Aufgabe aus dem Unterricht: <b>Skizziere die Ausgangslage</b> = genau diese Punkte in eigenen Worten."}
+  ],
+  q:[
+    {t:"mc", q:"Was war eine wichtige Ursache der Krise?", a:["Der starke Anstieg der Bevölkerung","Ein Krieg gegen Persien","Die Herrschaft eines Tyrannen","Eine Seuche"], ex:"Die Bevölkerung wuchs stark, das Ackerland aber nicht."},
+    {t:"mc", q:"Wem gehörte ein großer Teil des Ackerlands?", a:["Wohlhabenden Adligen","Den Kleinbauern","Den Kaufleuten","Den Priestern"], ex:"Große Teile gehörten wohlhabenden Adligen."},
+    {t:"mc", q:"Was bedeutet Schuldknechtschaft?", a:["Wer seine Schulden nicht zahlen kann, verliert seine Freiheit und muss für den Gläubiger arbeiten","Man zahlt eine Steuer auf seine Schulden","Die Schulden werden vom Staat übernommen","Man muss Athen für ein Jahr verlassen"], ex:"Schuldknechtschaft = Verlust der persönlichen Freiheit, Arbeit für den Gläubiger."},
+    {t:"tf", q:"Kaufleute und Handwerker hatten viel politischen Einfluss.", a:false, ex:"Falsch: Sie wurden reicher, hatten aber kaum politischen Einfluss. Die Macht lag beim Adel."},
+    {t:"mc", q:"Zwischen wem gab es Spannungen?", a:["Bauern, Kaufleuten, Handwerkern und dem Adel","Athen und Sparta","Priestern und Soldaten","Griechen und Persern"], ex:"Die Konfliktlinie: Bauern, Kaufleute, Handwerker ↔ Adel."},
+    {t:"mc", q:"In welcher Zeit befand sich Athen in dieser Krise?", a:["Im 7. und frühen 6. Jh. v. Chr.","Im 5. Jh. v. Chr.","Im 9. Jh. v. Chr.","Im 4. Jh. v. Chr."], ex:"7. und frühes 6. Jahrhundert v. Chr."}
+  ]},
+{ id:3, title:"Drakon", years:"um 621 v. Chr.",
+  learn:[
+    {h:"Was Drakon tat", y:"um 621", t:"Drakon sollte die Konflikte entschärfen. Er ließ das geltende Recht Athens <b>erstmals aufschreiben</b> und <b>öffentlich zugänglich</b> machen."},
+    {h:"Warum das wichtig war", t:"Vorher wurde das Recht nur <b>mündlich</b> überliefert. Dadurch hatten <b>adlige Richter</b> großen Einfluss. Jetzt konnte jeder Bürger nachlesen, welche Regeln und Strafen gelten.", m:"Ziel: <b>Rechtssicherheit</b> und <b>Rechtsgleichheit</b>."},
+    {h:"„Drakonisch“", t:"Die Gesetze waren für ihre <b>außergewöhnlich harten Strafen</b> bekannt. Daher kommt das heutige Wort „drakonisch“ = sehr streng."},
+    {h:"Ergebnis", t:"Die grundlegenden Probleme löste Drakon <b>nicht</b>. Verschuldung der Bauern und Konflikte blieben bestehen."}
+  ],
+  q:[
+    {t:"mc", q:"Wann schrieb Drakon das Recht auf?", a:["um 621 v. Chr.","594 v. Chr.","546 v. Chr.","508 v. Chr."], ex:"Drakon: um 621 v. Chr."},
+    {t:"mc", q:"Was war Drakons wichtigste Maßnahme?", a:["Das Recht aufschreiben und öffentlich machen","Die Schuldknechtschaft abschaffen","Die Bürger in 4 Vermögensklassen einteilen","Das Scherbengericht einführen"], ex:"Drakon schrieb das Recht auf. Die anderen Maßnahmen stammen von Solon und Kleisthenes."},
+    {t:"mc", q:"Warum war das mündliche Recht ein Problem?", a:["Adlige Richter hatten dadurch großen Einfluss auf die Rechtsprechung","Es gab gar keine Strafen","Es galt nur für Kaufleute","Es war in einer fremden Sprache"], ex:"Mündliches Recht → adlige Richter konnten es in ihrem Sinn auslegen."},
+    {t:"mc", q:"Welches Ziel hatte Drakon?", a:["Rechtssicherheit und Rechtsgleichheit","Mehr Macht für den Adel","Die Demokratie einführen","Den Handel fördern"], ex:"Ziel: Rechtssicherheit und Rechtsgleichheit."},
+    {t:"mc", q:"Was bedeutet „drakonisch“ heute?", a:["Sehr hart, sehr streng","Sehr gerecht","Sehr altmodisch","Sehr teuer"], ex:"Drakons Strafen waren sehr hart, daher „drakonisch“."},
+    {t:"tf", q:"Drakon löste das Problem der Verschuldung der Bauern.", a:false, ex:"Falsch: Die Verschuldung und die Konflikte bestanden weiter. Das ging erst Solon an."}
+  ]},
+{ id:4, title:"Solons Reformen", years:"594 v. Chr.",
+  learn:[
+    {h:"Solon bekommt Macht", y:"594", t:"Solon erhielt weitreichende politische Befugnisse, um die Krise zu überwinden."},
+    {h:"Sozial", t:"<b>Tilgung der Schulden</b> und <b>Abschaffung der Schuldknechtschaft</b> für athenische Bürger. Das half vor allem den ärmeren Bauern."},
+    {h:"Wirtschaftlich", t:"<b>Maße und Gewichte</b> wurden vereinheitlicht, dazu kam eine <b>Münzreform</b>. Das erleichterte den Handel und brachte einen wirtschaftlichen Aufschwung."},
+    {h:"Rechtlich", t:"Er überarbeitete große Teile der Gesetze Drakons und führte die <b>Popularklage</b> ein: Jeder Bürger kann gegen Unrecht klagen, <b>auch wenn er nicht selbst betroffen</b> ist."},
+    {h:"Politisch", t:"Die Bürger wurden in <b>4 Vermögensklassen</b> eingeteilt (<b>Zensussystem</b>). Politische Rechte hingen jetzt vom <b>Vermögen</b> ab, nicht mehr nur von adliger Herkunft. So konnten auch reiche Kaufleute mitreden.", m:"Merke die 4 Bereiche: <b>sozial · wirtschaftlich · rechtlich · politisch</b>."}
+  ],
+  q:[
+    {t:"mc", q:"In welchem Jahr erhielt Solon seine Befugnisse?", a:["594 v. Chr.","621 v. Chr.","546 v. Chr.","510 v. Chr."], ex:"Solon: 594 v. Chr."},
+    {t:"mc", q:"Welche soziale Maßnahme führte Solon durch?", a:["Schulden getilgt und Schuldknechtschaft abgeschafft","Das Scherbengericht eingeführt","Richter durchs Land reisen lassen","Statuen auf der Agora aufgestellt"], ex:"Sozial: Schuldentilgung und Abschaffung der Schuldknechtschaft."},
+    {t:"mc", q:"Was ist die Popularklage?", a:["Jeder Bürger darf gegen Unrecht klagen, auch wenn er nicht selbst betroffen ist","Nur Adlige dürfen vor Gericht klagen","Das Volk wählt die Richter","Eine Klage gegen einen Tyrannen"], ex:"Popularklage: Klagen auch ohne selbst betroffen zu sein."},
+    {t:"mc", q:"In wie viele Vermögensklassen teilte Solon die Bürger ein?", a:["4","3","5","10"], ex:"4 Vermögensklassen. (10 sind die Phylen des Kleisthenes!)"},
+    {t:"mc", q:"Wovon hingen politische Rechte im Zensussystem ab?", a:["Vom Vermögen","Von adliger Herkunft","Vom Alter","Vom Wohnort"], ex:"Zensussystem: Vermögen statt Herkunft."},
+    {t:"mc", q:"Welche Maßnahme war wirtschaftlich?", a:["Maße und Gewichte vereinheitlicht und Münzreform","Finanzielle Hilfen für Kleinbauern","Öffentliche Bauvorhaben","Förderung religiöser Feste"], ex:"Solon: Maße, Gewichte, Münzen. Hilfen für Bauern, Bauten und Feste waren Peisistratos."},
+    {t:"mc", q:"Zu welchem Bereich gehört die Popularklage?", a:["Rechtlich","Wirtschaftlich","Sozial","Politisch"], ex:"Die Popularklage ist eine rechtliche Reform."},
+    {t:"tf", q:"Solon schaffte Drakons Gesetze komplett ab.", a:false, ex:"Falsch: Er überarbeitete und kodifizierte große Teile davon."},
+    {t:"tf", q:"Durch das Zensussystem bekamen auch wohlhabende Kaufleute Möglichkeiten zur politischen Beteiligung.", a:true, ex:"Richtig: Nichtadlige mit Vermögen konnten jetzt politisch mitwirken."}
+  ]},
+{ id:5, title:"Die Tyrannis des Peisistratos", years:"546–527 v. Chr.",
+  learn:[
+    {h:"Aufstieg", y:"546", t:"Peisistratos stammte aus einer <b>adeligen Familie</b>, präsentierte sich aber als <b>Vertreter der ärmeren Landbevölkerung</b>. Zweimal wurde er vertrieben, <b>546 v. Chr.</b> setzte er sich dauerhaft durch."},
+    {h:"Was ist ein Tyrann?", t:"Im antiken Griechenland: ein <b>Einzelherrscher</b>, der seine Macht <b>außerhalb der bisherigen politischen Ordnung</b> erlangt hat. Das Wort war damals <b>nicht nur negativ</b> gemeint."},
+    {h:"Seine Herrschaft", t:"Solons Ordnung blieb <b>weitgehend erhalten</b> (Gesetze, Ämter, Vermögensklassen). Aber: Wichtige Ämter besetzte er mit <b>Vertrauten</b>. Die echte Macht lag bei ihm und seinem Umfeld."},
+    {h:"Maßnahmen", t:"<ul><li><b>Finanzielle Hilfen</b> für Kleinbauern → unabhängiger vom Adel</li><li><b>Richter reisen übers Land</b> → Streit vor Ort klären</li><li><b>Handel, Handwerk, Export</b> gefördert</li><li><b>Öffentliche Bauvorhaben</b> → Arbeit</li><li><b>Religiöse Feste</b> gefördert</li></ul>"},
+    {h:"Sein Ziel & das Paradoxon", t:"Er wollte <b>keine</b> Demokratie. Er wollte Konflikte verringern und seine <b>eigene Herrschaft sichern</b>. Trotzdem entstand eine <b>wirtschaftlich starke Mitte</b> zwischen Adel und Armen, und damit die Voraussetzung für spätere Demokratie.", m:"<b>527 v. Chr.</b> stirbt er. Seine Söhne <b>Hippias und Hipparchos</b> übernehmen."}
+  ],
+  q:[
+    {t:"mc", q:"Wann setzte sich Peisistratos dauerhaft durch?", a:["546 v. Chr.","594 v. Chr.","527 v. Chr.","514 v. Chr."], ex:"546 v. Chr., nach zwei Vertreibungen."},
+    {t:"mc", q:"Was war ein Tyrann im antiken Griechenland?", a:["Ein Einzelherrscher, der seine Macht außerhalb der bisherigen Ordnung erlangt hat","Immer ein grausamer Herrscher","Ein vom Volk gewählter Anführer","Ein König durch Geburt"], ex:"Tyrann = Einzelherrscher außerhalb der Ordnung. Nicht automatisch grausam."},
+    {t:"tf", q:"Das Wort „Tyrann“ war damals ausschließlich negativ gemeint.", a:false, ex:"Falsch: Die rein negative Bedeutung kam erst später."},
+    {t:"mc", q:"Als wessen Vertreter präsentierte sich Peisistratos?", a:["Der ärmeren Landbevölkerung","Des Adels","Der Kaufleute in der Stadt","Spartas"], ex:"Er gab sich als Vertreter der armen Landbevölkerung, obwohl er selbst adlig war."},
+    {t:"mc", q:"Wie ging Peisistratos mit Solons Ordnung um?", a:["Weitgehend erhalten, aber wichtige Ämter mit Vertrauten besetzt","Komplett abgeschafft","Durch eine Demokratie ersetzt","Alle Ämter dem Adel gegeben"], ex:"Ordnung blieb, aber die Ämter besetzte er mit Leuten, die ihm nahe standen."},
+    {t:"mc", q:"Warum ließ er Richter durch das Land reisen?", a:["Streitfälle konnten vor Ort entschieden werden, die Landbevölkerung musste nicht nach Athen","Um Steuern einzutreiben","Um Gegner zu verhaften","Um neue Gesetze zu verkünden"], ex:"Streit vor Ort klären, die Bauern sparen sich den Weg nach Athen."},
+    {t:"mc", q:"Was war das eigentliche Ziel seiner Politik?", a:["Konflikte verringern und die eigene Herrschaft sichern","Die Demokratie einführen","Den Adel stärken","Einen Krieg gegen Persien vorbereiten"], ex:"Zufriedene Bauern rebellieren nicht, das sicherte seine Herrschaft."},
+    {t:"mc", q:"Worin besteht das „Paradoxon“ des Peisistratos?", a:["Er wollte keine Demokratie, schuf aber durch die starke Mitte Voraussetzungen dafür","Er war adlig, aber arm","Er wurde zweimal vertrieben und trotzdem gewählt","Er schaffte Solons Gesetze ab und führte sie wieder ein"], ex:"Ungewollt stärkte er die Mitte und bereitete damit die Demokratie vor."},
+    {t:"mc", q:"Wann starb Peisistratos und wer folgte ihm?", a:["527 v. Chr., seine Söhne Hippias und Hipparchos","546 v. Chr., Solon","514 v. Chr., Harmodios","510 v. Chr., Kleisthenes"], ex:"527 v. Chr., Hippias und Hipparchos."},
+    {t:"tf", q:"Öffentliche Bauvorhaben boten Beschäftigung und stärkten Athen als Zentrum.", a:true, ex:"Richtig: Arbeit für viele, Athen als wirtschaftliches und kulturelles Zentrum."}
+  ]},
+{ id:6, title:"Die Tyrannenmörder", years:"514 v. Chr.",
+  learn:[
+    {h:"Das Attentat", y:"514", t:"<b>Harmodios und Aristogeiton</b> planten einen Anschlag auf die Herrscher beim <b>Panathenäenfest</b>. Sie glaubten, ihr Plan sei verraten worden, änderten ihn und töteten nur <b>Hipparchos</b>."},
+    {h:"Die Motive", t:"Die Motive waren <b>zumindest teilweise persönlich</b>: Hipparchos wollte sich Harmodios nähern und wurde abgewiesen. Danach soll er die Familie des Harmodios öffentlich gedemütigt haben."},
+    {h:"Die Folgen", t:"Sie beendeten <b>weder die Tyrannis</b>, noch führten sie eine Demokratie ein. Hippias herrschte weiter, bis er <b>510 v. Chr.</b> mit Hilfe Spartas vertrieben wurde."},
+    {h:"Die Erinnerung", y:"477/476", t:"Trotzdem wurden sie als <b>Helden der Freiheit</b> verehrt: Eine <b>Statuengruppe auf der Agora</b>; die erste wurde in den Perserkriegen nach Persien gebracht, <b>477/476</b> ließen die Athener eine neue errichten. Ihre Nachkommen erhielten Ehren und Vergünstigungen, man erinnerte an sie in Liedern und bei Festen."},
+    {h:"Kernpunkt", t:"Es gibt eine <b>Spannung zwischen dem tatsächlichen Geschehen und der späteren Erinnerung</b>. Sie wurden zu Symbolen für Freiheit und die Ablehnung von Alleinherrschaft.", m:"Bewertungsfrage „Ist die Verehrung gerechtfertigt?“: Nenn beide Seiten. <b>Dagegen:</b> persönliche Motive, Tyrannis ging weiter. <b>Dafür:</b> sie setzten ein Zeichen gegen Alleinherrschaft, das später für die Demokratie wichtig wurde."}
+  ],
+  q:[
+    {t:"mc", q:"Wen töteten Harmodios und Aristogeiton?", a:["Hipparchos","Hippias","Peisistratos","Kleisthenes"], ex:"Sie töteten Hipparchos. Hippias herrschte weiter."},
+    {t:"mc", q:"Bei welchem Anlass fand das Attentat statt?", a:["Beim Panathenäenfest","Bei den Olympischen Spielen","In der Volksversammlung","Bei einer Hochzeit"], ex:"Beim Panathenäenfest, 514 v. Chr."},
+    {t:"mc", q:"Welche Motive hatten die beiden laut Text?", a:["Zumindest teilweise persönliche Motive","Nur den Wunsch, die Demokratie einzuführen","Einen Auftrag aus Sparta","Geld von den Persern"], ex:"Die Motive waren zumindest teilweise persönlich."},
+    {t:"mc", q:"Warum änderten sie ihren Plan?", a:["Sie glaubten, ihr Plan sei verraten worden","Hippias war krank","Das Fest wurde abgesagt","Sparta griff ein"], ex:"Sie dachten, sie wären verraten worden, und töteten deshalb nur Hipparchos."},
+    {t:"tf", q:"Mit dem Attentat endete die Tyrannis in Athen.", a:false, ex:"Falsch: Hippias herrschte weiter, bis 510 v. Chr."},
+    {t:"mc", q:"Was geschah mit der ursprünglichen Statuengruppe?", a:["Sie wurde während der Perserkriege nach Persien gebracht","Hippias ließ sie zerstören","Sie wurde nach Sparta gebracht","Sie steht bis heute auf der Agora"], ex:"Nach Persien verschleppt. 477/476 wurde eine neue errichtet."},
+    {t:"mc", q:"Wann ließen die Athener die neue Statuengruppe errichten?", a:["477/476 v. Chr.","514 v. Chr.","546 v. Chr.","594 v. Chr."], ex:"477/476 v. Chr."},
+    {t:"mc", q:"Welche „Spannung“ beschreibt der Text?", a:["Zwischen dem tatsächlichen Geschehen und der späteren Erinnerung","Zwischen Athen und Persien","Zwischen Hippias und Hipparchos","Zwischen Adel und Bauern"], ex:"Tatsächlich: persönliche Motive, keine Befreiung. Erinnerung: Freiheitshelden."},
+    {t:"tf", q:"Die Nachkommen der Tyrannenmörder erhielten besondere Ehren und Vergünstigungen.", a:true, ex:"Richtig."},
+    {t:"mc", q:"Wofür wurden sie später zu Symbolfiguren?", a:["Für Freiheit und die Ablehnung von Alleinherrschaft","Für militärische Stärke","Für Reichtum und Handel","Für die Macht des Adels"], ex:"Freiheit und Ablehnung von Alleinherrschaft."}
+  ]},
+{ id:7, title:"Kleisthenes & die Inschrift", years:"um 508 v. Chr.",
+  learn:[
+    {h:"Die Inschrift", y:"um 508", t:"Die Inschrift beschreibt die Reformen des <b>Kleisthenes</b>. Der Name steht nicht auf dem Blatt, lern ihn trotzdem."},
+    {h:"Phylen und Demen", t:"Die Bürger werden in <b>10 Phylen</b> eingeteilt, und zwar nach <b>Demen</b> (Gemeinden)."},
+    {h:"Rat der 500", t:"Jede Phyle stellt <b>50 Männer</b>. 10 × 50 = <b>Rat der 500</b>. Der Rat <b>berät</b> über die Angelegenheiten der Stadt."},
+    {h:"Ο ΔΗΜΟΣ ΑΠΟΦΑΣΙΖΕΙ", t:"= „<b>Das Volk entscheidet</b>.“ (Demos = Volk, daher Demo-kratie.) Also: Der Rat berät, das Volk entscheidet."},
+    {h:"Ostrakismos (Scherbengericht)", t:"Damit <b>kein Mann mächtiger als die Stadt</b> wird, schreiben die Bürger seinen Namen auf eine <b>Tonscherbe</b> (Ostrakon). Er muss dann <b>10 Jahre</b> die Stadt verlassen.", m:"Zweck: eine <b>neue Tyrannis verhindern</b>. Die Bürger verbannen den Mächtigen, nicht umgekehrt."}
+  ],
+  q:[
+    {t:"mc", q:"In wie viele Phylen wurden die Bürger eingeteilt?", a:["10","4","12","50"], ex:"10 Phylen. (4 sind Solons Vermögensklassen!)"},
+    {t:"mc", q:"Wie viele Männer stellte jede Phyle für den Rat?", a:["50","10","100","500"], ex:"50 pro Phyle, 10 × 50 = 500."},
+    {t:"mc", q:"Wie heißt der Rat?", a:["Rat der 500","Rat der 50","Rat der 10","Rat der 1000"], ex:"Rat der 500."},
+    {t:"mc", q:"Was bedeutet „Ο ΔΗΜΟΣ ΑΠΟΦΑΣΙΖΕΙ“?", a:["Das Volk entscheidet","Die Stadt entscheidet","Der Rat berät","Der Adel herrscht"], ex:"Demos = Volk. Das Volk entscheidet."},
+    {t:"mc", q:"Wie funktioniert der Ostrakismos?", a:["Die Bürger schreiben den Namen eines zu mächtigen Mannes auf eine Tonscherbe, er muss die Stadt verlassen","Der Herrscher darf Gegner verbannen","Ein Gericht verhängt die Todesstrafe","Die Bürger wählen so den Rat"], ex:"Die Bürger verbannen einen zu mächtigen Mann per Tonscherbe."},
+    {t:"mc", q:"Wie lange musste der Verbannte die Stadt verlassen?", a:["10 Jahre","1 Jahr","5 Jahre","Für immer"], ex:"10 Jahre."},
+    {t:"mc", q:"Welchen Zweck hatte das Scherbengericht?", a:["Verhindern, dass ein Mann mächtiger als die Stadt wird, also eine neue Tyrannis","Schulden eintreiben","Richter auswählen","Verbrecher bestrafen"], ex:"Schutz vor einer neuen Tyrannis."},
+    {t:"mc", q:"Wonach wurden die Phylen eingeteilt?", a:["Nach Demen (Gemeinden)","Nach Vermögen","Nach adliger Familie","Nach Beruf"], ex:"Nach Demen. Das Vermögen war Solons Einteilung."},
+    {t:"tf", q:"Laut Inschrift entscheidet der Rat, und das Volk berät nur.", a:false, ex:"Umgekehrt: Der Rat berät, das Volk entscheidet."}
+  ]}
+];
+
+const TIMELINE = {t:"order", q:"Bring die Ereignisse in die richtige Reihenfolge (früheste zuerst).",
+  items:[["Drakon schreibt das Recht auf","621"],["Solons Reformen","594"],["Peisistratos setzt sich durch","546"],["Tod des Peisistratos","527"],["Attentat auf Hipparchos","514"],["Hippias wird vertrieben","510"],["Reformen des Kleisthenes","508"]],
+  ex:"621 Drakon · 594 Solon · 546 Peisistratos · 527 Tod · 514 Attentat · 510 Hippias vertrieben · 508 Kleisthenes."};
+
+const WHO_NAMES = ["Drakon","Solon","Peisistratos","Kleisthenes","Harmodios & Aristogeiton"];
+const WHO = [
+  ["Führte die Popularklage ein.","Solon"],
+  ["Schrieb das Recht erstmals auf.","Drakon"],
+  ["Ließ Richter durch das Land reisen.","Peisistratos"],
+  ["Teilte die Bürger in 10 Phylen ein.","Kleisthenes"],
+  ["Schaffte die Schuldknechtschaft ab.","Solon"],
+  ["Tötete Hipparchos beim Panathenäenfest.","Harmodios & Aristogeiton"],
+  ["Besetzte wichtige Ämter mit Vertrauten.","Peisistratos"],
+  ["Seine Strafen gaben einem Wort seine Bedeutung.","Drakon"],
+  ["Führte 4 Vermögensklassen ein.","Solon"],
+  ["Auf ihn geht das Scherbengericht zurück.","Kleisthenes"]
+].map(([q,r])=>({t:"mc", q:"Wer war's? "+q, a:[r,...WHO_NAMES.filter(n=>n!==r)].slice(0,4), ex:q+" → "+r+"."}));
+
+const SORT_OPTS = ["Spricht FÜR einen Rückschritt","Spricht GEGEN einen Rückschritt"];
+const SORT = [
+  ["Die Gesetze Solons blieben weitgehend erhalten.",1],
+  ["Die tatsächliche Macht lag bei Peisistratos und seinem Umfeld.",0],
+  ["Kleinbauern wurden wirtschaftlich unabhängiger vom Adel.",1],
+  ["Wichtige Ämter wurden mit Vertrauten besetzt.",0],
+  ["Es entstand eine wirtschaftlich starke Mitte.",1],
+  ["Er wollte keine stärkere politische Beteiligung des Volkes.",0]
+].map(([s,i])=>({t:"mc", q:"Peisistratos – ein Rückschritt für Athen? „"+s+"“", a:[SORT_OPTS[i],SORT_OPTS[1-i]], keep:true, ex:s+" → "+SORT_OPTS[i].toLowerCase()+"."}));
+
+const FINAL_LEARN = [
+  {h:"Der Zeitstrahl", t:"<b>621</b> Drakon · <b>594</b> Solon · <b>546</b> Peisistratos · <b>527</b> sein Tod · <b>514</b> Attentat auf Hipparchos · <b>510</b> Hippias vertrieben · <b>um 508</b> Kleisthenes"},
+  {h:"Die Kette in einem Satz", t:"Athen hat ein Problem (Schulden, Adel hat die Macht) → <b>Drakon</b> schreibt Gesetze auf → <b>Solon</b> schafft Schuldknechtschaft ab, Geld statt Herkunft → <b>Peisistratos</b> herrscht allein, stärkt aber ungewollt die Mitte → <b>Tyrannenmörder</b> töten Hipparchos, später als Helden verehrt → <b>Kleisthenes</b>: Das Volk entscheidet."},
+  {h:"Bewertungsfragen", t:"Bei „Rückschritt?“ oder „gerechtfertigt?“ gibt es keine einzige richtige Antwort. Punkte gibt es, wenn du <b>Argumente für beide Seiten</b> nennst und dann <b>begründet</b> dein Urteil fällst.", m:"Die Prüfung mischt alles: Zeitstrahl, „Wer war's?“, Argumente und Fragen aus allen Leveln. Du hast <b>3 Leben</b>."}
+];
+const TIMELINE_SHORT = {t:"order", key:"tls", q:"Bring die Ereignisse in die richtige Reihenfolge (früheste zuerst).", items:TIMELINE.items.slice(0,4), ex:"621 Drakon · 594 Solon · 546 Peisistratos · 527 Tod des Peisistratos."};
+
+const LETTERS = ["A","B","C","D"];
+LEVELS.forEach(l=>l.q.forEach((q,i)=>q.key=l.id+"-"+i));
+TIMELINE.key="tl"; WHO.forEach((q,i)=>q.key="w"+i); SORT.forEach((q,i)=>q.key="s"+i);
+
+const STAGES = [
+  {kind:"level", L:LEVELS[0]}, {kind:"level", L:LEVELS[1]}, {kind:"level", L:LEVELS[2]},
+  {kind:"test", title:"Zwischentest I", sub:"Level 1–3 gemischt", from:[1,2,3], n:10},
+  {kind:"level", L:LEVELS[3]}, {kind:"level", L:LEVELS[4]},
+  {kind:"test", title:"Zwischentest II", sub:"Level 1–5 gemischt", from:[1,2,3,4,5], n:10},
+  {kind:"level", L:LEVELS[5]}, {kind:"level", L:LEVELS[6]},
+  {kind:"final", title:"Abschlussprüfung", sub:"alles gemischt"}
+];
+STAGES.forEach((s,i)=>{ s.idx=i; s.key = s.kind==="level" ? "L"+s.L.id : "T"+i; if(s.L){ s.title=s.L.title; s.sub=s.L.years; } });
+const HEARTS = 3;
+
+const KEY="athen-lernpfad-v2";
+let P = load();
+function load(){ try{ const r=JSON.parse(localStorage.getItem(KEY)); if(r&&r.stars) return r; }catch(e){} return {stars:{},xp:0}; }
+/* Fortschritt wird mehrfach abgelegt: localStorage, IndexedDB, Cache-Speicher und Cookie.
+   Beim Start werden alle gelesen und zusammengeführt (jeweils das Beste). */
+let storesOK = {};
+function saveLocal(){
+  const json = JSON.stringify({stars:P.stars, xp:P.xp});
+  try{ localStorage.setItem(KEY,json); storesOK.ls = localStorage.getItem(KEY)===json; }catch(e){ storesOK.ls=false; }
+  try{ sessionStorage.setItem(KEY,json); }catch(e){}
+  try{ document.cookie = KEY+"="+encodeURIComponent(json)+";max-age=31536000;path=/;SameSite=None;Secure"; storesOK.ck = document.cookie.indexOf(KEY+"=")>=0; }catch(e){ storesOK.ck=false; }
+  idbPut(json).then(ok=>{ storesOK.idb=ok; refreshSyncChip(); });
+  cachePut(json).then(ok=>{ storesOK.cache=ok; refreshSyncChip(); });
+}
+function idbOpen(){
+  return new Promise(res=>{ try{ const r=indexedDB.open("athen-lernpfad",1);
+    r.onupgradeneeded=()=>r.result.createObjectStore("kv");
+    r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); r.onblocked=()=>res(null);
+  }catch(e){ res(null); } });
+}
+async function idbPut(json){
+  const db=await idbOpen(); if(!db) return false;
+  return new Promise(res=>{ try{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(json,"progress");
+    tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); }catch(e){ res(false); } });
+}
+async function idbGet(){
+  const db=await idbOpen(); if(!db) return null;
+  return new Promise(res=>{ try{ const r=db.transaction("kv").objectStore("kv").get("progress");
+    r.onsuccess=()=>res(r.result||null); r.onerror=()=>res(null); }catch(e){ res(null); } });
+}
+async function cachePut(json){
+  try{ const c=await caches.open("athen-lernpfad"); await c.put(new Request("progress.json"), new Response(json,{headers:{"Content-Type":"application/json"}})); return true; }catch(e){ return false; }
+}
+async function cacheGet(){
+  try{ const c=await caches.open("athen-lernpfad"); const r=await c.match(new Request("progress.json")); return r? await r.text() : null; }catch(e){ return null; }
+}
+function cookieGet(){
+  try{ const m=document.cookie.split("; ").find(x=>x.startsWith(KEY+"=")); return m? decodeURIComponent(m.slice(KEY.length+1)) : null; }catch(e){ return null; }
+}
+function sessionGet(){ try{ return sessionStorage.getItem(KEY); }catch(e){ return null; } }
+function parseP(json){ try{ const r=JSON.parse(json); return r&&r.stars? r : null; }catch(e){ return null; } }
+async function restoreAll(){
+  const found = [cookieGet(), sessionGet(), await idbGet(), await cacheGet()].map(parseP).filter(Boolean);
+  const before = {stars:{...P.stars}, xp:P.xp};
+  found.forEach(r=>{ P = mergeProgress(P, r); });
+  saveLocal();
+  if(!sameProgress(before,P)){
+    if(VIEW.kind==="map") renderMap();
+    else if(VIEW.kind==="learn"){ const fo=firstOpen(); if(fo<0) renderMap(); else if(VIEW.i<fo) openStage(fo); }
+  }
+}
+let cloud=null, cloudState="wait", writeChain=Promise.resolve(), VIEW={kind:"map"};
+function save(){
+  saveLocal();
+  if(!cloud) return;
+  const body={stars:{...P.stars}, xp:P.xp, v:2};
+  writeChain = writeChain.then(()=>cloud.set(body)).then(()=>{ if(cloudState!=="ok"){ cloudState="ok"; refreshSyncChip(); } })
+    .catch(()=>{ cloudState="off"; refreshSyncChip(); });
+}
+function mergeProgress(a,b){
+  const out={stars:{...a.stars}, xp:Math.max(a.xp||0,b.xp||0)};
+  for(const k in (b.stars||{})) out.stars[k]=Math.max(out.stars[k]||0, b.stars[k]||0);
+  return out;
+}
+const sameProgress=(a,b)=>JSON.stringify(Object.entries(a.stars).sort())===JSON.stringify(Object.entries(b.stars).sort()) && a.xp===b.xp;
+function checkLocal(){ restoreAll(); }
+const B36="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function makeCode(){
+  let n=0; STAGES.forEach(st=>{ n = n*4 + Math.min(3,starsOf(st)); });
+  n = n*100000 + Math.min(99999, P.xp|0);
+  const body=n.toString(36).toUpperCase(), chk=B36[n%36];
+  return (body+chk).replace(/(.{4})(?=.)/g,"$1-");
+}
+function readCode(str){
+  const c=(str||"").toUpperCase().replace(/[^0-9A-Z]/g,"");
+  if(c.length<2) return null;
+  const n=parseInt(c.slice(0,-1),36);
+  if(!Number.isSafeInteger(n) || B36[n%36]!==c.slice(-1)) return null;
+  let xp=n%100000, rest=Math.floor(n/100000); const stars={};
+  for(let i=STAGES.length-1;i>=0;i--){ const v=rest%4; rest=Math.floor(rest/4); if(v) stars[STAGES[i].key]=v; }
+  if(rest!==0) return null;
+  return {stars,xp};
+}
+function codeBox(){
+  return `<details class="codebox">
+    <summary>Spielstand auf ein anderes Gerät übertragen (optional)</summary>
+    <p class="muted">Dein Fortschritt wird automatisch gespeichert. Den Code brauchst du nur, wenn du auf einem anderen Gerät oder Browser weiterspielen willst.</p>
+    <div class="coderow"><code id="mycode">${makeCode()}</code><button class="btn ghost small" id="copy">Kopieren</button></div>
+    <label for="codein" class="muted">Code von früher eingeben</label>
+    <div class="coderow"><input id="codein" autocomplete="off" autocapitalize="characters" placeholder="z. B. 1A2B-3C4D"><button class="btn small" id="load">Laden</button></div>
+    <p id="codemsg" class="codemsg" role="status"></p>
+  </details>`;
+}
+function wireCodeBox(){
+  const cp=document.getElementById("copy");
+  if(cp) cp.onclick=()=>{ const t=makeCode();
+    const done=()=>{cp.textContent="Kopiert";};
+    try{ navigator.clipboard.writeText(t).then(done,()=>selectCode()); }catch(e){ selectCode(); } };
+  const ld=document.getElementById("load"), inp=document.getElementById("codein"), msg=document.getElementById("codemsg");
+  if(ld) ld.onclick=()=>{ const r=readCode(inp.value);
+    if(!r){ msg.textContent="Der Code stimmt nicht. Prüf, ob du ihn richtig abgeschrieben hast."; msg.className="codemsg bad"; return; }
+    P=mergeProgress(P,r); save(); renderMap();
+    const d=document.querySelector(".codebox"); if(d) d.open=true; const m=document.getElementById("codemsg"); if(m){ m.textContent="Fortschritt geladen."; m.className="codemsg good"; } };
+  if(inp) inp.onkeydown=e=>{ if(e.key==="Enter") ld.click(); };
+}
+function selectCode(){ const el=document.getElementById("mycode"); const r=document.createRange(); r.selectNodeContents(el); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+function syncLabel(){
+  const n=Object.values(storesOK).filter(Boolean).length;
+  return cloudState==="ok" ? `Auf diesem Gerät gespeichert (${n}-fach)` : "Browser speichert nicht, nutze deinen Code";
+}
+function refreshSyncChip(){ cloudState = Object.values(storesOK).some(Boolean) ? "ok" : "off"; const c=document.getElementById("sync"); if(c){ c.textContent=syncLabel(); c.classList.remove("ok","wait","off"); c.classList.add(cloudState); } }
+async function initCloud(){
+  try{
+    if(!window.claude || !window.claude.use){ cloudState="off"; return refreshSyncChip(); }
+    const [db,user]=await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    const uid = user ? await user.id() : null;
+    if(!db || !uid){ cloudState="off"; return refreshSyncChip(); }
+    cloud = db.doc("data/users/"+uid+"/progress");
+    const snap = await cloud.get();
+    const remote = snap.exists ? snap.data() : null;
+    const before = {stars:{...P.stars}, xp:P.xp};
+    if(remote && remote.stars) P = mergeProgress(P, remote);
+    saveLocal();
+    const needsPush = !remote || !remote.stars || !sameProgress(P, mergeProgress({stars:{},xp:0},remote));
+    if(needsPush){ await cloud.set({stars:{...P.stars}, xp:P.xp, v:2}); }
+    cloudState="ok"; refreshSyncChip();
+    if(!sameProgress(before,P)){
+      if(VIEW.kind==="map") renderMap();
+      else if(VIEW.kind==="learn"){ const fo=firstOpen(); if(fo<0) renderMap(); else if(VIEW.i<fo) openStage(fo); }
+    }
+  }catch(e){ cloud=null; cloudState="off"; refreshSyncChip(); }
+}
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const starsOf = s => P.stars[s.key]||0;
+const unlocked = i => i===0 || starsOf(STAGES[i-1])>0;
+const firstOpen = () => STAGES.findIndex(s=>!starsOf(s));
+const starStr = n => `<span class="stars">${[0,1,2].map(i=>i<n?"<span>★</span>":"<span class='off'>★</span>").join("")}</span>`;
+const heartStr = n => `<span class="hearts" aria-label="${n} Leben">${[0,1,2].map(i=>`<span class="${i<n?"":"lost"}">♥</span>`).join("")}</span>`;
+const dotLabel = s => s.kind==="level" ? s.L.id : s.kind==="test" ? "T" : "Ω";
+const stageName = s => s.kind==="level" ? "Level "+s.L.id : s.title;
+const app = document.getElementById("app");
+let S = null, resetArmed = false;
+
+function miniPath(cur){
+  return `<div class="mini" aria-label="Fortschritt im Spiel">${STAGES.map((s,i)=>{
+    const cls = [starsOf(s)?"done":"", i===cur?"cur":"", s.kind!=="level"?"sq":"", unlocked(i)?"":"locked"].join(" ");
+    return `<span class="${cls}" title="${stageName(s)}">${dotLabel(s)}</span>`;}).join("")}</div>`;
+}
+
+function renderMap(){
+  S=null; VIEW={kind:"map"};
+  const total = STAGES.reduce((s,st)=>s+starsOf(st),0);
+  const fo = firstOpen();
+  app.innerHTML = `
+    <header class="top">
+      <span class="inscr">Ο ΔΗΜΟΣ ΑΠΟΦΑΣΙΖΕΙ</span>
+      <h1>Athen-Lernpfad</h1>
+      <p class="muted" style="margin:0">7 Level, 2 Zwischentests und die Abschlussprüfung. Du hast in jeder Runde 3 Leben. Sind sie weg, musst du die Runde wiederholen.</p>
+      <div class="stats"><span class="chip"><span class="star">★</span> ${total} / ${STAGES.length*3}</span><span class="chip">${P.xp} XP</span><span class="chip sync ${cloudState}" id="sync">${syncLabel()}</span></div>
+      ${fo>=0?`<button class="btn" id="cont" style="margin-top:8px">Weiterspielen: ${stageName(STAGES[fo])} →</button>`:""}
+    </header>
+    <nav class="path">
+      ${STAGES.map((s,i)=>{
+        const st=starsOf(s), open=unlocked(i);
+        return `<button class="node ${st?"done":""} ${s.kind!=="level"?"final":""}" data-i="${i}" ${open?"":"disabled"} aria-label="${stageName(s)}: ${s.title}${open?"":" (gesperrt)"}">
+          <span class="dot">${dotLabel(s)}</span>
+          <span class="node-body"><span><span class="node-title">${s.title}</span><br><span class="node-sub mono">${s.sub}</span></span>
+          ${open?starStr(st):`<span class="node-sub">gesperrt</span>`}</span></button>`;
+      }).join("")}
+    </nav>
+    ${codeBox()}
+    <button class="reset ${resetArmed?"warn":""}" id="reset">${resetArmed?"Wirklich alles zurücksetzen? Nochmal tippen.":"Fortschritt zurücksetzen"}</button>`;
+  app.querySelectorAll(".node").forEach(b=>b.onclick=()=>openStage(+b.dataset.i));
+  const c=document.getElementById("cont"); if(c) c.onclick=()=>openStage(fo);
+  wireCodeBox();
+  document.getElementById("reset").onclick=()=>{
+    if(resetArmed){ P={stars:{},xp:0}; save(); resetArmed=false; } else resetArmed=true;
+    renderMap();
+  };
+  window.scrollTo(0,0);
+}
+
+function openStage(i){
+  VIEW={kind:"learn", i};
+  resetArmed=false;
+  const s=STAGES[i];
+  const cards = s.kind==="level" ? s.L.learn : s.kind==="final" ? FINAL_LEARN : null;
+  const eyebrow = s.kind==="level" ? `Level ${s.L.id} von 7 · Lernkarte` : s.kind==="test" ? "Zwischentest" : "Letzte Runde";
+  const intro = s.kind==="test"
+    ? `<div class="card boss"><h3>Keine Lernkarte. Jetzt zählt's.</h3><p>${s.n} Fragen aus ${s.sub.replace(" gemischt","")}${i===6?", dazu ein Zeitstrahl und „Wer war's?“":""}. Du hast <b>3 Leben</b>. Schaffst du den Test, geht es weiter.</p></div>`
+    : cards.map(c=>`<div class="card"><h3>${c.h}${c.y?`<span class="mono">${c.y}</span>`:""}</h3><p>${c.t}</p>${c.m?`<div class="merke"><b>Merke:</b> ${c.m}</div>`:""}</div>`).join("");
+  app.innerHTML = `
+    <div class="bar"><button class="back" id="back">Karte</button>${miniPath(i)}</div>
+    <div class="lhead"><span class="eyebrow">${eyebrow} · <span id="sync" class="sync ${cloudState}">${syncLabel()}</span></span><h2>${s.title}</h2><span class="mono muted">${s.sub}</span></div>
+    <div class="cards">${intro}</div>
+    ${s.kind==="level"?`<p class="muted" style="margin:0 0 14px;font-size:.9rem">Lies alles genau. Im Quiz hast du 3 Leben, dazu kommen 2 Wiederholungsfragen aus früheren Leveln.</p>`:""}
+    <button class="btn wide" id="go">${s.kind==="level"?"Quiz starten":s.kind==="test"?"Test starten":"Prüfung starten"} →</button>`;
+  document.getElementById("back").onclick=renderMap;
+  document.getElementById("go").onclick=()=>startQuiz(i);
+  window.scrollTo(0,0);
+}
+
+function buildQuestions(s){
+  const review = new Set();
+  if(s.kind==="level"){
+    const main = shuffle(s.L.q);
+    const earlier = LEVELS.filter(l=>l.id<s.L.id).flatMap(l=>l.q);
+    const rev = shuffle(earlier).slice(0,2);
+    rev.forEach(q=>{ review.add(q.key); main.splice(2+Math.floor(Math.random()*(main.length-1)),0,q); });
+    return {qs:main, review};
+  }
+  if(s.kind==="test"){
+    const pool = LEVELS.filter(l=>s.from.includes(l.id)).flatMap(l=>l.q);
+    let qs = shuffle(pool).slice(0, s.idx===6 ? s.n-3 : s.n);
+    if(s.idx===6){
+      const who = WHO.filter(q=>["Drakon","Solon","Peisistratos"].includes(q.a[0]));
+      qs = shuffle([...qs, ...shuffle(who).slice(0,2)]);
+      qs.splice(Math.floor(qs.length/2),0,TIMELINE_SHORT);
+    }
+    return {qs, review};
+  }
+  const pool = LEVELS.flatMap(l=>l.q);
+  return {qs:[TIMELINE, ...shuffle([...shuffle(pool).slice(0,12), ...shuffle(WHO).slice(0,5), ...shuffle(SORT).slice(0,3)])], review};
+}
+
+function startQuiz(i){
+  VIEW={kind:"quiz", i};
+  const s=STAGES[i];
+  const {qs, review} = buildQuestions(s);
+  S={i, queue:qs.slice(), total:qs.length, done:0, wrong:new Map(), streak:0, best:0, answered:false, retry:new Set(), review, hearts:HEARTS, xp:0};
+  renderQ();
+}
+
+function renderQ(){
+  const q=S.queue[0]; S.answered=false; S.order=[];
+  const s=STAGES[S.i];
+  const pct = Math.round(S.done/S.total*100);
+  let body="";
+  if(q.t==="mc"){
+    const base = q.a.map((t,k)=>({t,ok:k===0}));
+    S.opts = q.keep ? base.sort((x,y)=>SORT_OPTS.indexOf(x.t)-SORT_OPTS.indexOf(y.t)) : shuffle(base);
+    body = `<div class="opts">${S.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${LETTERS[k]}</span><span>${o.t}</span></button>`).join("")}</div>`;
+  } else if(q.t==="tf"){
+    S.opts=[{t:"Richtig",ok:q.a===true},{t:"Falsch",ok:q.a===false}];
+    body = `<div class="opts tf">${S.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${LETTERS[k]}</span><span>${o.t}</span></button>`).join("")}</div>`;
+  } else {
+    S.opts=null; S.pool = shuffle(q.items.map((it,k)=>k));
+    body = `<div id="orderArea"></div>`;
+  }
+  const typeLabel = q.t==="tf"?"Richtig oder falsch?":q.t==="order"?"Zeitstrahl":"Wähle die richtige Antwort";
+  const tag = S.retry.has(q.key) ? `<span class="tag bad">Nochmal</span>` : S.review.has(q.key) ? `<span class="tag rev">Wiederholung</span>` : "";
+  app.innerHTML = `
+    <div class="bar"><button class="back" id="back" aria-label="Zur Karte">✕</button><div class="progress" aria-label="Fortschritt ${pct}%"><i style="width:${pct}%"></i></div>${heartStr(S.hearts)}</div>
+    <div class="qcard" id="qcard">
+      <div class="qmeta"><span class="eyebrow">${stageName(s)} · ${typeLabel}</span>${S.streak>=3?`<span class="combo">Serie ×${S.streak}</span>`:""}</div>
+      ${tag}
+      <p class="qtext">${q.q}</p>
+      ${body}
+      <div id="fb"></div>
+    </div>
+    <p class="hint">${q.t==="order"?"Tippe die Ereignisse der Reihe nach an. Antippen im Feld nimmt sie wieder heraus.":"Tastatur: A–D oder 1–4 zum Antworten, Enter für weiter."}</p>`;
+  document.getElementById("back").onclick=renderMap;
+  if(q.t==="order") renderOrder(q);
+  else app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(+b.dataset.k));
+  window.scrollTo(0,0);
+}
+
+function renderOrder(q){
+  const area=document.getElementById("orderArea");
+  const placed=S.order, rest=S.pool.filter(k=>!placed.includes(k));
+  area.innerHTML = `
+    <div class="slots">${q.items.map((_,n)=>{ const k=placed[n];
+      return `<div class="slot ${k!==undefined?"filled":""}"><span class="n">${n+1}</span>${k!==undefined?`<button data-rm="${n}">${q.items[k][0]}</button>`:""}</div>`;}).join("")}</div>
+    <div class="pool">${rest.map(k=>`<button data-add="${k}">${q.items[k][0]}</button>`).join("")}</div>
+    <button class="btn wide" id="check" ${placed.length<q.items.length?"disabled":""}>Prüfen</button>`;
+  area.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{S.order.push(+b.dataset.add);renderOrder(q);});
+  area.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{S.order.splice(+b.dataset.rm,1);renderOrder(q);});
+  document.getElementById("check").onclick=()=>{
+    const ok = S.order.every((k,n)=>k===n);
+    area.querySelectorAll(".slot").forEach((sl,n)=>{
+      sl.classList.add(S.order[n]===n?"right":"wrong");
+      sl.innerHTML=`<span class="n">${n+1}</span><button disabled>${q.items[S.order[n]][0]}</button>${S.order[n]!==n?`<span class="yr">richtig: ${q.items[n][0]} (${q.items[n][1]})</span>`:`<span class="yr">${q.items[n][1]}</span>`}`;
+    });
+    area.querySelector(".pool").remove(); document.getElementById("check").remove();
+    finishAnswer(ok);
+  };
+}
+
+function answer(k){
+  if(S.answered || !S.opts) return;
+  const btns=app.querySelectorAll(".opt");
+  btns.forEach((b,j)=>{ b.disabled=true; if(S.opts[j].ok) b.classList.add("right"); });
+  const ok=S.opts[k].ok;
+  if(!ok) btns[k].classList.add("wrong");
+  finishAnswer(ok);
+}
+
+function finishAnswer(ok){
+  S.answered=true;
+  const q=S.queue.shift();
+  if(ok){
+    S.done++; S.streak++; S.best=Math.max(S.best,S.streak);
+    const gain = (S.retry.has(q.key)?5:10) + (S.streak>=3?5:0);
+    S.xp+=gain;
+  } else {
+    S.streak=0; S.hearts--;
+    if(!S.wrong.has(q.key)) S.wrong.set(q.key,q);
+    S.retry.add(q.key);
+    S.queue.push(q);
+    const qc=document.getElementById("qcard"); qc.classList.remove("shake"); void qc.offsetWidth; qc.classList.add("shake");
+    const h=app.querySelector(".hearts"); if(h) h.outerHTML=heartStr(S.hearts);
+  }
+  const dead = S.hearts<=0;
+  const praise = ["Richtig!","Genau!","Stark!","Sitzt!","Perfekt!"];
+  const head = ok ? praise[Math.floor(Math.random()*praise.length)] + (S.streak>=3?` Serie ×${S.streak}`:"")
+    : dead ? "Falsch. Das war dein letztes Leben." : `Falsch. Ein Leben weg, die Frage kommt nochmal.`;
+  const fb=document.getElementById("fb");
+  fb.innerHTML = `<div class="fb ${ok?"ok":"no"}"><strong>${head}</strong><p>${q.ex}</p><button class="btn" id="next">${dead?"Weiter":S.queue.length?"Weiter":"Ergebnis ansehen"} →</button></div>`;
+  const nx=document.getElementById("next"); nx.onclick=next; nx.focus({preventScroll:true});
+  fb.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function next(){
+  if(S.hearts<=0) return renderGameOver();
+  if(S.queue.length) renderQ(); else renderResult();
+}
+
+function reviewList(){
+  return S.wrong.size ? `<div class="review"><h3>Das hattest du falsch</h3>${[...S.wrong.values()].map(q=>`<div class="card"><b>${q.q}</b>${q.ex}</div>`).join("")}</div>` : "";
+}
+
+function renderGameOver(){
+  const s=STAGES[S.i];
+  app.innerHTML = `
+    <div class="result">
+      <div class="bigheart">♥</div>
+      <h2>Keine Leben mehr</h2>
+      <p class="score">${S.done} von ${S.total} Fragen geschafft</p>
+      <p class="muted" style="margin:0;max-width:46ch">${s.kind==="level"?"Lies die Lernkarte nochmal, vor allem die Punkte unten. Dann startet das Level von vorn.":"Schau dir die Punkte unten an. Wenn du unsicher bist, spiel das passende Level nochmal, dann versuch den Test erneut."}</p>
+      <div class="row" style="width:100%">
+        ${s.kind!=="test"?`<button class="btn" id="learn">Lernkarte nochmal lesen</button>`:""}
+        <button class="btn ${s.kind!=="test"?"ghost":""}" id="again">Nochmal versuchen</button>
+        <button class="btn ghost" id="map">Karte</button>
+      </div>
+      ${reviewList()}
+    </div>`;
+  const l=document.getElementById("learn"); if(l) l.onclick=()=>openStage(S.i);
+  document.getElementById("again").onclick=()=>startQuiz(S.i);
+  document.getElementById("map").onclick=renderMap;
+  window.scrollTo(0,0);
+}
+
+function renderResult(){
+  const s=STAGES[S.i];
+  const stars = S.hearts;
+  const firstTry = S.total - S.wrong.size;
+  if(stars>starsOf(s)) P.stars[s.key]=stars;
+  P.xp += S.xp; save();
+  const nextS = STAGES[S.i+1];
+  if(!nextS) return renderVictory(stars);
+  const title = s.kind==="test" ? "Test bestanden!" : stars===3?"Fehlerfrei!":"Level geschafft!";
+  app.innerHTML = `
+    <div class="result">
+      ${miniPath(S.i+1)}
+      <div class="bigstars">${[0,1,2].map(i=>i<stars?"<span>★</span>":"<span class='off'>★</span>").join("")}</div>
+      <h2>${title}</h2>
+      <p class="score"><b>${firstTry} von ${S.total}</b> beim ersten Versuch richtig · +${S.xp} XP${S.best>=3?` · beste Serie ×${S.best}`:""}</p>
+      <p class="muted" style="margin:0;max-width:44ch">${stars===3?"Kein Leben verloren.":"Sterne = übrige Leben. Für 3 Sterne kannst du die Runde später nochmal spielen."}</p>
+      <div class="row" style="width:100%">
+        <button class="btn" id="nextS">Weiter: ${nextS.kind==="level"?"Level "+nextS.L.id:nextS.title} →</button>
+        <button class="btn ghost" id="again">Nochmal spielen</button>
+      </div>
+      ${reviewList()}
+    </div>`;
+  document.getElementById("nextS").onclick=()=>openStage(S.i+1);
+  document.getElementById("again").onclick=()=>startQuiz(S.i);
+  window.scrollTo(0,0);
+}
+
+function renderVictory(stars){
+  const total = STAGES.reduce((a,st)=>a+starsOf(st),0);
+  app.innerHTML = `
+    <div class="result">
+      <span class="inscr">Ο ΔΗΜΟΣ ΑΠΟΦΑΣΙΖΕΙ</span>
+      <div class="bigstars">${[0,1,2].map(i=>i<stars?"<span>★</span>":"<span class='off'>★</span>").join("")}</div>
+      <h2>Alles gemeistert!</h2>
+      <p class="score">Du hast alle 7 Level, beide Zwischentests und die Abschlussprüfung geschafft.</p>
+      <div class="stats" style="justify-content:center"><span class="chip"><span class="star">★</span> ${total} / ${STAGES.length*3}</span><span class="chip">${P.xp} XP</span></div>
+      <p class="muted" style="margin:0;max-width:46ch">Morgen früh noch einmal die Abschlussprüfung spielen. Wenn du sie wieder schaffst, sitzt der Stoff. In der Arbeit bei Bewertungsfragen immer beide Seiten nennen.</p>
+      <div class="row" style="width:100%">
+        <button class="btn" id="again">Prüfung nochmal</button>
+        <button class="btn ghost" id="map">Karte</button>
+      </div>
+      ${reviewList()}
+    </div>`;
+  document.getElementById("again").onclick=()=>startQuiz(S.i);
+  document.getElementById("map").onclick=renderMap;
+  window.scrollTo(0,0);
+}
+
+document.addEventListener("keydown",e=>{
+  if(!S || !app.querySelector(".qcard")) return;
+  if(S.answered && e.key==="Enter"){ e.preventDefault(); next(); return; }
+  if(S.answered) return;
+  const map={a:0,b:1,c:2,d:3,"1":0,"2":1,"3":2,"4":3};
+  const k=map[e.key.toLowerCase()];
+  if(k!==undefined && S.opts && k<S.opts.length) answer(k);
+});
+
+(function start(){ const fo=firstOpen(); fo>=0 ? openStage(fo) : renderMap(); checkLocal(); })();
+</script>
+</body>
+</html>
